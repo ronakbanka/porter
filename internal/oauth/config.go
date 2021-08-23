@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"github.com/porter-dev/porter/internal/models/integrations"
@@ -159,16 +160,21 @@ func GetAccessToken(
 	updateToken func(accessToken []byte, refreshToken []byte, expiry time.Time) error,
 ) (string, *time.Time, error) {
 	expiry := prevToken.Expiry
+
+	fmt.Println("DIGITALOCEAN GOT", conf.Endpoint.AuthURL == DOAuthURL, expiry.IsZero())
+
 	if conf.Endpoint.AuthURL == DOAuthURL && expiry.IsZero() {
 		// manually set the expiry so refresh token is used
 		expiry = time.Now().Add(-1 * time.Minute)
 	}
 
+	fmt.Println("DIGITALOCEAN GOT", expiry)
+
 	tokSource := conf.TokenSource(context.TODO(), &oauth2.Token{
 		AccessToken:  string(prevToken.AccessToken),
 		RefreshToken: string(prevToken.RefreshToken),
 		TokenType:    "Bearer",
-		Expiry:       prevToken.Expiry,
+		Expiry:       expiry,
 	})
 
 	token, err := tokSource.Token()
