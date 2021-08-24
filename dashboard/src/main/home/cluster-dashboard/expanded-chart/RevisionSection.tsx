@@ -235,15 +235,20 @@ class RevisionSection extends Component<PropsType, StateType> {
           <Td>{revision.version}</Td>
           <Td>{this.readableDate(revision.info.last_deployed)}</Td>
           <Td>
-            {isGithubApp ? (
+            {!imageTag ? (
+              "N/A"
+            ) : isGithubApp && /^[0-9A-Fa-f]{7}$/g.test(imageTag) ? (
               <A
-                href={`https://github.com/${this.props.chart.git_action_config.git_repo}/commit/${imageTag}`}
+                href={`https://github.com/${this.props.chart.git_action_config?.git_repo}/commit/${imageTag}`}
                 target="_blank"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
               >
                 {parsedImageTag}
               </A>
             ) : (
-              parsedImageTag || "N/A"
+              parsedImageTag
             )}
           </Td>
           <Td>v{revision.chart.metadata.version}</Td>
@@ -551,6 +556,5 @@ const RevisionUpdateMessage = styled.div`
 const A = styled.a`
   color: #8590ff;
   text-decoration: underline;
-  margin-left: 5px;
   cursor: pointer;
 `;
