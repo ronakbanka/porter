@@ -202,6 +202,7 @@ var localPath string
 var tag string
 var dockerfile string
 var method string
+var stream bool
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
@@ -267,6 +268,13 @@ func init() {
 		"the build method to use (\"docker\" or \"pack\")",
 	)
 
+	updateCmd.PersistentFlags().BoolVar(
+		&stream,
+		"stream",
+		false,
+		"stream update logs to porter dashboard",
+	)
+
 	updateCmd.AddCommand(updateGetEnvCmd)
 
 	updateGetEnvCmd.PersistentFlags().StringVar(
@@ -290,19 +298,19 @@ func updateFull(resp *api.AuthCheckResponse, client *api.Client, args []string) 
 		return err
 	}
 
-	err = updateBuildWithAgent(updateAgent)
+	err = updateBuildWithAgent(updateAgent, client)
 
 	if err != nil {
 		return err
 	}
 
-	err = updatePushWithAgent(updateAgent)
+	err = updatePushWithAgent(updateAgent, client)
 
 	if err != nil {
 		return err
 	}
 
-	err = updateUpgradeWithAgent(updateAgent)
+	err = updateUpgradeWithAgent(updateAgent, client)
 
 	if err != nil {
 		return err
@@ -392,9 +400,29 @@ func updateBuildWithAgent(updateAgent *deploy.DeployAgent) error {
 	// build the deployment
 	color.New(color.FgGreen).Println("Building docker image for", app)
 
+	if stream {
+		updateAgent.StreamEvent(api.Event{
+			ID:     "build",
+			Name:   "Build",
+			Index:  100,
+			Status: api.EventStatusInProgress,
+			Info:   "",
+		})
+	}
+
 	buildEnv, err := updateAgent.GetBuildEnv()
 
 	if err != nil {
+		if stream {
+			// another concern: is it safe to ignore the error here?
+			updateAgent.StreamEvent(api.Event{
+				ID:     "build",
+				Name:   "Build",
+				Index:  110,
+				Status: api.EventStatusFailed,
+				Info:   err.Error(),
+			})
+		}
 		return err
 	}
 
@@ -402,34 +430,137 @@ func updateBuildWithAgent(updateAgent *deploy.DeployAgent) error {
 	err = updateAgent.SetBuildEnv(buildEnv)
 
 	if err != nil {
+		if stream {
+			updateAgent.StreamEvent(api.Event{
+				ID:     "build",
+				Name:   "Build",
+				Index:  120,
+				Status: api.EventStatusFailed,
+				Info:   err.Error(),
+			})
+		}
 		return err
 	}
 
-	return updateAgent.Build()
+	if err := updateAgent.Build(); err != nil {
+		if stream {
+			updateAgent.StreamEvent(api.Event{
+				ID:     "build",
+				Name:   "Build",
+				Index:  130,
+				Status: api.EventStatusFailed,
+				Info:   err.Error(),
+			})
+		}
+		return err
+	}
+
+	if stream {
+		updateAgent.StreamEvent(api.Event{
+			ID:     "build",
+			Name:   "Build",
+			Index:  140,
+			Status: api.EventStatusSuccess,
+			Info:   "",
+		})
+	}
+
+	return nil
 }
 
 func updatePushWithAgent(updateAgent *deploy.DeployAgent) error {
 	// push the deployment
 	color.New(color.FgGreen).Println("Pushing new image for", app)
 
-	return updateAgent.Push()
+	if stream {
+		updateAgent.StreamEvent(api.Event{
+			ID:     "push",
+			Name:   "Push",
+			Index:  200,
+			Status: api.EventStatusInProgress,
+			Info:   "",
+		})
+	}
+
+	if err := updateAgent.Push(); err != nil {
+		if stream {
+			updateAgent.StreamEvent(api.Event{
+				ID:     "push",
+				Name:   "Push",
+				Index:  210,
+				Status: api.EventStatusFailed,
+				Info:   err.Error(),
+			})
+		}
+		return err
+	}
+
+	if stream {
+		updateAgent.StreamEvent(api.Event{
+			ID:     "push",
+			Name:   "Push",
+			Index:  220,
+			Status: api.EventStatusSuccess,
+			Info:   "",
+		})
+	}
+
+	return nil
 }
 
 func updateUpgradeWithAgent(updateAgent *deploy.DeployAgent) error {
 	// push the deployment
 	color.New(color.FgGreen).Println("Calling webhook for", app)
 
+	if stream {
+		updateAgent.StreamEvent(api.Event{
+			ID:     "upgrade",
+			Name:   "Upgrade",
+			Index:  300,
+			Status: api.EventStatusInProgress,
+			Info:   "",
+		})
+	}
+
 	// read the values if necessary
 	valuesObj, err := readValuesFile()
 
 	if err != nil {
+		if stream {
+			updateAgent.StreamEvent(api.Event{
+				ID:     "upgrade",
+				Name:   "Upgrade",
+				Index:  310,
+				Status: api.EventStatusFailed,
+				Info:   err.Error(),
+			})
+		}
 		return err
 	}
 
 	err = updateAgent.UpdateImageAndValues(valuesObj)
 
 	if err != nil {
+		if stream {
+			updateAgent.StreamEvent(api.Event{
+				ID:     "upgrade",
+				Name:   "Upgrade",
+				Index:  320,
+				Status: api.EventStatusFailed,
+				Info:   err.Error(),
+			})
+		}
 		return err
+	}
+
+	if stream {
+		updateAgent.StreamEvent(api.Event{
+			ID:     "upgrade",
+			Name:   "Upgrade",
+			Index:  330,
+			Status: api.EventStatusSuccess,
+			Info:   err.Error(),
+		})
 	}
 
 	color.New(color.FgGreen).Println("Successfully updated", app)

@@ -33,6 +33,7 @@ import useAuth from "shared/auth/useAuth";
 import TitleSection from "components/TitleSection";
 import { integrationList } from "shared/common";
 import DeploymentType from "./DeploymentType";
+import DeployStatus from "./status/DeployStatus";
 
 type Props = {
   namespace: string;
@@ -367,6 +368,7 @@ const ExpandedChart: React.FC<Props> = (props) => {
                   <Spinner src={loadingSrc} />
                 </Header>
               </TextWrap>
+              <DeployStatus chart={chart} />
             </Placeholder>
           );
         }
@@ -387,6 +389,7 @@ const ExpandedChart: React.FC<Props> = (props) => {
                 </A>{" "}
                 build logs.
               </TextWrap>
+              <DeployStatus chart={chart} />
             </Placeholder>
           );
         } else {
@@ -864,9 +867,9 @@ const Placeholder = styled.div`
   font-size: 13px;
   color: #ffffff44;
   width: 100%;
-  display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: scroll;
 `;
 
 const Spinner = styled.img`
