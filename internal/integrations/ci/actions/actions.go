@@ -33,11 +33,12 @@ type GithubActions struct {
 	GithubAppSecretPath  string
 	GithubInstallationID uint
 
-	PorterToken string
-	BuildEnv    map[string]string
-	ProjectID   uint
-	ClusterID   uint
-	ReleaseName string
+	PorterToken      string
+	BuildEnv         map[string]string
+	ProjectID        uint
+	ClusterID        uint
+	ReleaseName      string
+	ReleaseNamespace string
 
 	GitBranch      string
 	DockerFilePath string
@@ -178,7 +179,7 @@ func (g *GithubActions) GetGithubActionYAML() ([]byte, error) {
 	gaSteps := []GithubActionYAMLStep{
 		getCheckoutCodeStep(),
 		getSetTagStep(),
-		getUpdateAppStep(g.ServerURL, g.getPorterTokenSecretName(), g.ProjectID, g.ClusterID, g.ReleaseName, g.Version),
+		getUpdateAppStep(g.ServerURL, g.getPorterTokenSecretName(), g.ProjectID, g.ClusterID, g.ReleaseName, g.ReleaseNamespace, g.Version),
 	}
 
 	branch := g.GitBranch
@@ -414,25 +415,31 @@ func (g *GithubActions) deleteGithubFile(
 	client *github.Client,
 	filename string,
 ) error {
-	filepath := ".github/workflows/" + filename
-	sha := ""
+	branch := g.GitBranch
+	if branch == "" {
+		branch = g.defaultBranch
+	}
 
+	filepath := ".github/workflows/" + filename
 	// get contents of a file if it exists
 	fileData, _, _, _ := client.Repositories.GetContents(
 		context.TODO(),
 		g.GitRepoOwner,
 		g.GitRepoName,
 		filepath,
-		&github.RepositoryContentGetOptions{},
+		&github.RepositoryContentGetOptions{
+			Ref: branch,
+		},
 	)
 
+	sha := ""
 	if fileData != nil {
 		sha = *fileData.SHA
 	}
 
 	opts := &github.RepositoryContentFileOptions{
 		Message: github.String(fmt.Sprintf("Delete %s file", filename)),
-		Branch:  github.String(g.defaultBranch),
+		Branch:  &branch,
 		SHA:     &sha,
 	}
 
