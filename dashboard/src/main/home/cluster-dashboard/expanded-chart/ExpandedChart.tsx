@@ -33,7 +33,6 @@ import useAuth from "shared/auth/useAuth";
 import TitleSection from "components/TitleSection";
 import { integrationList } from "shared/common";
 import DeploymentType from "./DeploymentType";
-import DeployStatus from "./status/DeployStatus";
 import EventsTab from "./events/EventsTab";
 
 type Props = {
@@ -386,7 +385,6 @@ const ExpandedChart: React.FC<Props> = (props) => {
                 </A>{" "}
                 tab of your GitHub repo to view live build logs.
               </TextWrap>
-              <DeployStatus chart={chart} />
             </Placeholder>
           );
         } else {
