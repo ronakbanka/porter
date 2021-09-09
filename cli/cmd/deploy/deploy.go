@@ -109,7 +109,7 @@ func NewDeployAgent(client *api.Client, app string, opts *DeployOpts) (*DeployAg
 			deployAgent.dockerfilePath = deployAgent.opts.LocalDockerfile
 		}
 
-		if deployAgent.opts.LocalDockerfile == "" {
+		if deployAgent.dockerfilePath == "" && deployAgent.opts.LocalDockerfile == "" {
 			deployAgent.dockerfilePath = "./Dockerfile"
 		}
 	}
@@ -131,6 +131,7 @@ func NewDeployAgent(client *api.Client, app string, opts *DeployOpts) (*DeployAg
 		deployAgent.dockerfilePath = deployAgent.opts.LocalDockerfile
 	} else {
 		deployAgent.imageRepo = release.GitActionConfig.ImageRepoURI
+		deployAgent.opts.LocalPath = release.GitActionConfig.FolderPath
 	}
 
 	deployAgent.tag = opts.OverrideTag
@@ -395,6 +396,12 @@ func (d *DeployAgent) pullCurrentReleaseImage() error {
 
 	if !ok {
 		return fmt.Errorf("could not cast image.tag field to string")
+	}
+
+	// if image repo is a hello-porter image, skip
+	if d.imageRepo == "public.ecr.aws/o1j4x7p4/hello-porter" ||
+		d.imageRepo == "public.ecr.aws/o1j4x7p4/hello-porter-job" {
+		return nil
 	}
 
 	fmt.Printf("attempting to pull image: %s\n", fmt.Sprintf("%s:%s", d.imageRepo, tagStr))

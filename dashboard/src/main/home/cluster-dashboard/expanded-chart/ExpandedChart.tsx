@@ -28,6 +28,7 @@ import MetricsSection from "./metrics/MetricsSection";
 import ListSection from "./ListSection";
 import StatusSection from "./status/StatusSection";
 import SettingsSection from "./SettingsSection";
+import Loading from "components/Loading";
 import { useWebsockets } from "shared/hooks/useWebsockets";
 import useAuth from "shared/auth/useAuth";
 import TitleSection from "components/TitleSection";
@@ -356,12 +357,7 @@ const ExpandedChart: React.FC<Props> = (props) => {
         if (isLoadingChartData) {
           return (
             <Placeholder>
-              <TextWrap>
-                <Header>
-                  <Spinner src={loadingSrc} />
-                </Header>
-              </TextWrap>
-              <DeployStatus chart={chart} />
+              <Loading />
             </Placeholder>
           );
         }
@@ -466,7 +462,7 @@ const ExpandedChart: React.FC<Props> = (props) => {
 
     // Filter tabs if previewing an old revision or updating the chart version
     if (isPreview) {
-      let liveTabs = ["status", "settings", "deploy", "metrics"];
+      let liveTabs = ["status", "events", "settings", "deploy", "metrics"];
       rightTabOptions = rightTabOptions.filter(
         (tab: any) => !liveTabs.includes(tab.value)
       );
@@ -626,7 +622,7 @@ const ExpandedChart: React.FC<Props> = (props) => {
     localStorage.setItem("devOpsMode", devOpsMode.toString());
   }, [devOpsMode, currentChart?.form, isPreview]);
 
-  useEffect(() => {
+  useEffect((): any => {
     let isSubscribed = true;
 
     const ingressComponent = components?.find((c) => c.Kind === "Ingress");
@@ -808,6 +804,14 @@ const Tooltip = styled.div`
 
 const TextWrap = styled.div``;
 
+const LoadingWrapper = styled.div`
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 const LineBreak = styled.div`
   width: calc(100% - 0px);
   height: 2px;
@@ -856,16 +860,19 @@ const Header = styled.div`
 `;
 
 const Placeholder = styled.div`
-  min-height: 400px;
-  height: 50vh;
-  padding: 30px;
-  padding-bottom: 90px;
-  font-size: 13px;
-  color: #ffffff44;
   width: 100%;
+  min-height: 300px;
+  height: 40vh;
+  display: flex;
   align-items: center;
   justify-content: center;
-  overflow-y: scroll;
+  color: #ffffff44;
+  font-size: 14px;
+
+  > i {
+    font-size: 18px;
+    margin-right: 10px;
+  }
 `;
 
 const Spinner = styled.img`

@@ -6,6 +6,7 @@ import { Context } from "shared/Context";
 import { ChartType } from "../../../../../shared/types";
 import api from "../../../../../shared/api";
 import EventCard from "./EventCard";
+import Loading from "components/Loading";
 import EventDetail from "./EventDetail";
 
 export type Event = {
@@ -27,11 +28,12 @@ type Props = {
   currentChart: ChartType;
 };
 
-const REFRESH_TIME = 1000; // SHOULD BE MADE HIGHER!
+const REFRESH_TIME = 15000;
 
 const EventsTab: React.FunctionComponent<Props> = (props) => {
   const { currentCluster, currentProject } = useContext(Context);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [shouldRequest, setShouldRequest] = useState(true);
   const [eventData, setEventData] = useState<EventContainer[]>([]); // most recent event is last
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
@@ -82,62 +84,68 @@ const EventsTab: React.FunctionComponent<Props> = (props) => {
   };
 
   useEffect(() => {
-    const id = window.setInterval(() => {
+    const getData = () => {
       if (!shouldRequest) return;
       setShouldRequest(false);
       api
-        .getReleaseSteps(
-          "<token>",
-          {
-            cluster_id: currentCluster.id,
-            namespace: props.currentChart.namespace,
-          },
-          {
-            id: currentProject.id,
-            name: props.currentChart.name,
-          }
-        )
-        .then((data) => {
-          setIsLoading(false);
-          filterData(data.data);
-        })
-        .catch((err) => {})
-        .finally(() => {
-          setShouldRequest(true);
-        });
-    }, REFRESH_TIME);
+          .getReleaseSteps(
+              "<token>",
+              {
+                cluster_id: currentCluster.id,
+                namespace: props.currentChart.namespace,
+              },
+              {
+                id: currentProject.id,
+                name: props.currentChart.name,
+              }
+          )
+          .then((data) => {
+            setIsLoading(false);
+            filterData(data.data);
+          })
+          .catch((err) => {
+            setIsError(true);
+          })
+          .finally(() => {
+            setShouldRequest(true);
+          });
+    };
+
+    getData();
+    const id = window.setInterval(getData, REFRESH_TIME);
+
     return () => {
       setIsLoading(true);
       window.clearInterval(id);
     };
   }, [currentProject, currentCluster, props.currentChart]);
 
+  if (isError) {
+    return (
+        <Placeholder>
+          Error loading events.
+        </Placeholder>
+    )
+  }
+
   if (isLoading) {
     return (
       <Placeholder>
-        <div>
-          <Header>
-            <Spinner src={loadingSrc} />
-          </Header>
-        </div>
+        <Loading />
       </Placeholder>
     );
   }
 
-  if (eventData.length == 0) {
+  if (eventData.length === 0) {
     return (
       <Placeholder>
-        <div>
-          <Header>
-            This prompt appears when there are no events to display. Should
-            probably tell the user to use the --stream flag or something.
-          </Header>
-        </div>
+        <i className="material-icons">category</i>
+        No application events found.
       </Placeholder>
     );
   }
 
-  if (selectedEvent != null) {
+  if (selectedEvent !== null) {
     return (
       <EventDetail
         container={eventData[selectedEvent]}
@@ -225,16 +233,19 @@ const InstallPorterAgentButton = styled.button`
 `;
 
 const Placeholder = styled.div`
-  min-height: 200px;
-  height: 20vh;
-  padding: 30px;
-  padding-bottom: 90px;
-  font-size: 13px;
-  color: #ffffff44;
   width: 100%;
+  min-height: 300px;
+  height: 40vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #ffffff44;
+  font-size: 14px;
+
+  > i {
+    font-size: 18px;
+    margin-right: 10px;
+  }
 `;
 
 const Header = styled.div`
